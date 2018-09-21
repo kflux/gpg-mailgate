@@ -1,0 +1,1 @@
+Your PGP key has been deleted from our gateway. From now on you will receive mails from us unencrypted.

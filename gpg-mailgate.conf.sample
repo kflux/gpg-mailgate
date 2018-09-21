@@ -1,23 +1,69 @@
 [default]
-# whether gpg-mailgate should add a header after it has processed an email
-# this may be useful for debugging purposes
+# Whether gpg-mailgate should add a header after it has processed an email
+# This may be useful for debugging purposes
 add_header = yes
 
-# whether we should only sign emails if they are explicitly defined in
-#  the key mappings below ([keymap] section)
-# this means gpg-mailgate won't automatically detect PGP recipients
-keymap_only = no
+# Whether we should only encrypt emails if they are explicitly defined in
+# the key mappings below ([enc_keymap] section)
+# This means gpg-mailgate won't automatically detect PGP recipients for encrypting
+enc_keymap_only = no
+
+# Whether we should only decrypt emails if they are explicitly defined in
+# the key mappings below ([dec_keymap] section)
+# This means gpg-mailgate won't automatically detect PGP recipients for decrypting
+dec_keymap_only = no
+
+# If dec_keymap_only is set to yes and recipients have private keys present for decrypting
+# but are not on in the keymap, this can cause that mails for them will be
+# encrypted. Set this to no if you want this behaviour.
+failsave_dec = yes
+
+# Convert encrypted text/plain email to MIME-attached encrypt style.
+# (Default is to use older inline-style PGP encoding.)
+mime_conversion = yes
+
+# RFC 2821 defines that the user part (User@domain.tld) of a mail address should be treated case sensitive.
+# However, in the real world this is ignored very often. This option disables the RFC 2821
+# compatibility so both the user part and the domain part are treated case insensitive.
+# Disabling the compatibility is more convenient to users. So if you know that your
+# recipients all ignore the RFC you could this to yes.
+mail_case_insensitive = no
+
+# This setting disables PGP/INLINE decryption completely. However,
+# PGP/MIME encrypted mails will still be decrypted if possible. PGP/INLINE
+# decryption has to be seen as experimental and could have some negative
+# side effects. So if you want to take the risk set this to no.
+no_inline_dec = yes
+
+# Here you can define a regex for which the gateway should try to decrypt mails.
+# It could be used to define that decryption should be used for a wider range of
+# mail addresses e.g. a whole domain. No key is needed here. It is even active if 
+# dec_keymap is set to yes. If this feature should be disabled, don't leave it blank.
+# Set it to None. For further regex information please have a look at
+# https://docs.python.org/2/library/re.html
+dec_regex = None
 
 [gpg]
 # the directory where gpg-mailgate public keys are stored
 # (see INSTALL for details)
-keyhome = /var/gpg/.gnupg
+keyhome = /var/gpgmailgate/.gnupg
 
 [smime]
 # the directory for the S/MIME certificate files
-cert_path = /var/smime/certs
+cert_path = /var/gpgmailgate/smime
+
+[mailregister]
+# settings for the register-handler
 register_email = register@yourdomain.tld
-mail_templates = /var/smime/templates
+mail_templates = /var/gpgmailgate/register_templates
+# URL to webpanel. The server should be able to reach it
+webpanel_url = http://yourdomain.tld
+
+[cron]
+# settings for the gpgmw cron job
+send_email = yes
+notification_email = gpg-mailgate@yourdomain.tld
+mail_templates = /var/gpgmailgate/cron_templates
 
 [logging]
 # For logging to syslog. 'file = syslog', otherwise use path to the file.
@@ -30,6 +76,9 @@ verbose = yes
 # unless you alter the default Postfix configuration, you won't have to modify this
 host = 127.0.0.1
 port = 10028
+# This is the default port of postfix. It is used to send some
+# mails through the GPG-Mailgate so they are encrypted
+enc_port = 25
 
 [database]
 # uncomment the settings below if you want
@@ -40,7 +89,7 @@ host = localhost
 username = gpgmw
 password = password
 
-[keymap]
+[enc_keymap]
 # You can find these by running the following command:
 #	gpg --list-keys --keyid-format long user@example.com
 # Which will return output similar to:
@@ -49,3 +98,36 @@ password = password
 #	sub   2048g/BBBBBBBBBBBBBBBB 2007-10-22
 # You want the AAAAAAAAAAAAAAAA not BBBBBBBBBBBBBBBB.
 #you@domain.tld = 12345678
+
+[enc_domain_keymap]
+# This seems to be similar to the [enc_keymap] section. However, you
+# can define default keys for a domain here. Entries in the enc_keymap
+# and individual keys stored on the system have a higher priority than
+# the default keys specified here.
+#
+#
+# You can find these by running the following command:
+#	gpg --list-keys --keyid-format long user@example.com
+# Which will return output similar to:
+#	pub   1024D/AAAAAAAAAAAAAAAA 2007-10-22
+#	uid                          Joe User <user@example.com>
+#	sub   2048g/BBBBBBBBBBBBBBBB 2007-10-22
+# You want the AAAAAAAAAAAAAAAA not BBBBBBBBBBBBBBBB.
+#domain.tld = 12345678
+
+[dec_keymap]
+# You can find these by running the following command:
+#	gpg --list-secret-keys --keyid-format long user@example.com
+# Which will return output similar to:
+#	sec   1024D/AAAAAAAAAAAAAAAA 2007-10-22
+#	uid                          Joe User <user@example.com>
+#	ssb   2048g/BBBBBBBBBBBBBBBB 2007-10-22
+# You want the AAAAAAAAAAAAAAAA not BBBBBBBBBBBBBBBB.
+#you@domain.tld = 12345678
+
+[pgp_style]
+# Here a PGP style (inline or PGP/MIME) could be defined for recipients.
+# This overwrites the setting mime_conversion for the defined recipients.
+# Valid entries are inline and mime
+# If an entry is not valid, the setting mime_conversion is used as fallback.
+#you@domian.tld = mime
